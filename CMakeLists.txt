@@ -5,6 +5,10 @@ project(spz
   LANGUAGES C CXX
   VERSION 1.1.0)
 
+# use of designated initializers requires at least '/std:c++20'
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 include(GNUInstallDirs)
 
 # zlib is required to build the project
@@ -34,9 +38,14 @@ target_include_directories(spz
 
 set_target_properties(spz PROPERTIES
   PUBLIC_HEADER "${spz_headers}"
-  CXX_STANDARD 17
-  CXX_STANDARD_REQUIRED ON
 )
+
+# CLI executable
+add_executable(spzcli "${CMAKE_CURRENT_SOURCE_DIR}/src/cc/main.cc")
+target_link_libraries(spzcli PRIVATE spz ZLIB::ZLIB)
+
+# Optional: if main.cc includes any headers directly
+target_include_directories(spzcli PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/cc")
 
 # Installation
 
@@ -70,3 +79,7 @@ install(EXPORT spzTargets
   NAMESPACE spz::
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/spz"
 )
+
+# Optional: install the CLI binary
+install(TARGETS spzcli
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

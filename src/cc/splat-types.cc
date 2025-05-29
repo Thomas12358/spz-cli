@@ -1,6 +1,7 @@
 #include "splat-types.h"
 
 #include <cmath>
+#include <limits>
 
 namespace spz {
 
@@ -16,8 +17,10 @@ float halfToFloat(Half h) {
   }
 
   if (exponent == 31) {
-    // Infinity or NaN.
-    return mantissa != 0 ? 0.0f / 0.0f : signMul * 1.0f / 0.0f;
+      // Infinity or NaN.
+      return mantissa != 0
+          ? std::numeric_limits<float>::quiet_NaN()
+          : signMul * std::numeric_limits<float>::infinity();
   }
 
   // non-zero exponent implies 1 in the mantissa decimal.
@@ -65,15 +68,6 @@ float norm(const Vec3f &a) {
 Vec3f normalized(const Vec3f &v) {
   float n = norm(v);
   return {v[0] / n, v[1] / n, v[2] / n};
-}
-
-Quat4f normalized(const Quat4f &v) {
-  float norm = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2] + v[3] * v[3]);
-  return {v[0] / norm, v[1] / norm, v[2] / norm, v[3] / norm};
-}
-
-float norm(const Quat4f &q) {
-  return std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
 }
 
 Quat4f axisAngleQuat(const Vec3f &scaledAxis) {

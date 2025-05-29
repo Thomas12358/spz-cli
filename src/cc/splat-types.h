@@ -9,6 +9,8 @@
 
 #include "splat-c-types.h"
 
+constexpr float PI = 3.14159265358979323846f;
+
 namespace spz {
 
 inline SpzFloatBuffer copyFloatBuffer(const std::vector<float> &vector) {
@@ -18,7 +20,7 @@ inline SpzFloatBuffer copyFloatBuffer(const std::vector<float> &vector) {
     buffer.data = new float[buffer.count];
     std::memcpy(buffer.data, vector.data(), buffer.count * sizeof(float));
   }
-  return buffer;
+    return buffer;
 }
 
 enum class CoordinateSystem {
@@ -166,19 +168,19 @@ struct GaussianCloud {
 
   float medianVolume() const {
     if (numPoints == 0) {
-      return 0.01f;
+        return 0.01f;
     }
     // The volume of an ellipsoid is 4/3 * pi * x * y * z, where x, y, and z are the radii on each
     // axis. Scales are stored on a log scale, and exp(x) * exp(y) * exp(z) = exp(x + y + z). So we
     // can sort by value = (x + y + z) and compute volume = 4/3 * pi * exp(value) later.
     std::vector<float> scaleSums;
     for (int32_t i = 0; i < scales.size(); i += 3) {
-      float sum = scales[i] + scales[i + 1] + scales[i + 2];
-      scaleSums.push_back(sum);
+        float sum = scales[i] + scales[i + 1] + scales[i + 2];
+        scaleSums.push_back(sum);
     }
     std::sort(scaleSums.begin(), scaleSums.end());
     float median = scaleSums[(int32_t)(scaleSums.size() / 2)];
-    return (M_PI * 4 / 3) * exp(median);
+    return (PI * 4 / 3) * exp(median);
   }
 };
 
@@ -196,8 +198,22 @@ Vec3f normalized(const Vec3f &v);
 float norm(const Vec3f &a);
 
 // Quaternion helpers.
-float norm(const Quat4f &q);
-Quat4f normalized(const Quat4f &v);
+constexpr float sqrt_constexpr(float x) {
+    if (x <= 0.0f) return 0.0f;
+
+    float guess = x > 1.0f ? x / 2.0f : 1.0f; // Reasonable initial guess
+    for (int i = 0; i < 5; ++i) {
+        guess = 0.5f * (guess + x / guess);
+    }
+    return guess;
+}
+constexpr float norm(const Quat4f& q) {
+    return sqrt_constexpr(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+}
+constexpr Quat4f normalized(const Quat4f& q) {
+    float n = norm(q);
+    return { q[0] / n, q[1] / n, q[2] / n, q[3] / n };
+}
 Quat4f axisAngleQuat(const Vec3f &scaledAxis);
 
 // Constexpr helpers.
