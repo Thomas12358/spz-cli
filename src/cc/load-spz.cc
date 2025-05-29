@@ -592,26 +592,50 @@ GaussianCloud loadSplatFromPly(const std::string &filename, const UnpackOptions 
     in.close();
     return {};
   }
+
   std::string line;
-  std::getline(in, line);
-  if (line != "ply") {
+  bool foundPly = false;
+  bool foundFormat = false;
+  int32_t numPoints = 0;
+  std::unordered_map<std::string, int> fields;  // name -> index
+
+  // Read header
+  while (std::getline(in, line)) {
+
+      // Known header properties
+      if (line.rfind("comment", 0) == 0) continue;
+      if (line == "ply") { foundPly = true; continue; }
+      if (line == "format binary_little_endian 1.0") { foundFormat = true; continue; }
+      if (line.rfind("element vertex ", 0) == 0) {
+          numPoints = std::stoi(line.substr(std::strlen("element vertex ")));
+          continue;
+      }
+      if (line.rfind("property float ", 0) == 0) {
+          std::string name = line.substr(std::strlen("property float "));
+          fields[name] = static_cast<int>(fields.size());
+          continue;
+      }
+      if (line == "end_header") {
+          break;
+      }
+
+      // Unknown header property
+      SpzLog("[SPZ ERROR] %s: unsupported line in header: %s", filename.c_str(), line.c_str());
+      in.close();
+      return {};
+  }
+
+  // Check header values
+  if (!foundPly) {
     SpzLog("[SPZ ERROR] %s: not a .ply file", filename.c_str());
     in.close();
     return {};
   }
-  std::getline(in, line);
-  if (line != "format binary_little_endian 1.0") {
+  if (!foundFormat) {
     SpzLog("[SPZ ERROR] %s: unsupported .ply format", filename.c_str());
     in.close();
     return {};
   }
-  std::getline(in, line);
-  if (line.find("element vertex ") != 0) {
-    SpzLog("[SPZ ERROR] %s: missing vertex count", filename.c_str());
-    in.close();
-    return {};
-  }
-  int32_t numPoints = std::stoi(line.substr(std::strlen("element vertex ")));
   if (numPoints <= 0 || numPoints > 10 * 1024 * 1024) {
     SpzLog("[SPZ ERROR] %s: invalid vertex count: %d", filename.c_str(), numPoints);
     in.close();
@@ -619,20 +643,6 @@ GaussianCloud loadSplatFromPly(const std::string &filename, const UnpackOptions 
   }
 
   SpzLog("[SPZ] Loading %d points", numPoints);
-  std::unordered_map<std::string, int> fields;  // name -> index
-  for (int32_t i = 0;; i++) {
-    std::getline(in, line);
-    if (line == "end_header")
-      break;
-
-    if (line.find("property float ") != 0) {
-      SpzLog("[SPZ ERROR] %s: unsupported property data type: %s", filename.c_str(), line.c_str());
-      in.close();
-      return {};
-    }
-    std::string name = line.substr(std::strlen("property float "));
-    fields[name] = i;
-  }
 
   // Returns the index for a given field name, ensuring the name exists.
   const auto index = [&fields](const std::string &name) {
